@@ -4,9 +4,9 @@ library(brms)
 library(tidybayes)
 library(modelr)
 library(rstan)
-library(rtdists)
-library(RWiener)
-
+# library(rtdists)
+# library(RWiener)
+#
 #------------------------------------------------------------
 # CONSTANTS
 ADAPT_DELTA <- 0.99
@@ -79,16 +79,17 @@ predict_ddm <- function(fit) {
 #------------------------------------------------------------
 # MODEL 4: Saturated model (no predictor for bias) + (instruction does not predict drift rate) + (no predictor for boundary seperation)
 #------------------------------------------------------------
-formula <- bf(rt | dec(sayhi) ~ 0 + intensity + (0 + intensity | s | ID),
-              bs ~ 1 + (1 | s | ID),
-              ndt ~ 1 + instruction + (1 + instruction | s | ID),
-              bias ~ 1 + (1 | s | ID))
+formula <- bf(rt | dec(sayhi) ~ 0 + intensity + (0 + intensity | ID),
+              bs ~ 1 + (1 | ID),
+              ndt ~ 1 + instruction + (1 + instruction | ID),
+              # bias ~ 1 + (1 | ID))
+              bias = 0.5)
 
 prior <- prior(normal(0, 2), class = b) +
          prior(normal(0, 1), class = Intercept, dpar = bs) +
          prior(normal(0, 5), class = Intercept, dpar = ndt) +
          prior(normal(0, 1), class = b, dpar = ndt) +
-         prior(normal(0, 1), class = Intercept, dpar = bias) +
+         # prior(normal(0, 1), class = Intercept, dpar = bias) +
          prior(student_t(3, 0, 1), class = sd, group = ID) +
          prior(lkj(2), class = cor, group = ID)
 
@@ -108,7 +109,7 @@ initfun <- function() {
 final_ddm_fit_4 <- brm(formula,
                        family = wiener(link = "identity",
                                        link_bs = "log",
-                                       link_bias = "logit",
+                                       # link_bias = "logit",
                                        link_ndt = "log"),
                        control = list(max_treedepth = 15,
                                       adapt_delta = ADAPT_DELTA),
@@ -117,11 +118,13 @@ final_ddm_fit_4 <- brm(formula,
                        inits = initfun,
                        init_r = 0.05,
                        prior = prior,
-                       cores = parallel::detectCores(),
-                       data = data) %>%
-                    add_loo()
+                       cores = 4,
+                       data = data)
+
+saveRDS(final_ddm_fit_4, file = "models/fit_4_ddm_final_no_bias.rds")
+final_ddm_fit_4 <- add_loo(final_ddm_fit_4)
+saveRDS(final_ddm_fit_4, file = "models/fit_4_ddm_final_no_bias.rds")
 
 
-pred_final_ddm_4 <- predict_ddm(final_ddm_fit_4)
-saveRDS(final_ddm_fit_4, file = "models/fit_4_ddm_final.rds")
-saveRDS(pred_final_ddm_4, file = "models/pred_4_ddm_final.rds")
+# pred_final_ddm_4 <- predict_ddm(final_ddm_fit_4)
+# saveRDS(pred_final_ddm_4, file = "models/pred_4_ddm_final.rds")

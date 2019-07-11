@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --mail-user=andrew.ellis@psy.unibe.ch
 #SBATCH --mail-type=end
-#SBATCH --job-name="model_5"
+#SBATCH --job-name="model_5_no_bias"
 #SBATCH --ntasks=4
 #SBATCH --time=96:00:00
 #SBATCH --mem-per-cpu=2G

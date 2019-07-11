@@ -4,8 +4,8 @@ library(brms)
 library(tidybayes)
 library(modelr)
 library(rstan)
-library(rtdists)
-library(RWiener)
+# library(rtdists)
+# library(RWiener)
 
 #------------------------------------------------------------
 # CONSTANTS
@@ -78,17 +78,18 @@ predict_ddm <- function(fit) {
 #------------------------------------------------------------
 # MODEL 2: Saturated model (no predictor for bias)
 #------------------------------------------------------------
-formula <- bf(rt | dec(sayhi) ~ 0 + instruction:intensity + (0 + instruction:intensity | s | ID),
-              bs ~ 1 + instruction + (1 + instruction | s | ID),
-              ndt ~ 1 + instruction + (1 + instruction | s | ID),
-              bias ~ 1 + (1 | s | ID))
+formula <- bf(rt | dec(sayhi) ~ 0 + instruction:intensity + (0 + instruction:intensity | ID),
+              bs ~ 1 + instruction + (1 + instruction | ID),
+              ndt ~ 1 + instruction + (1 + instruction | ID),
+              # bias ~ 1 + (1 | s | ID))
+              bias = 0.5)
 
 prior <- prior(normal(0, 2), class = b) +
          prior(normal(0, 1), class = Intercept, dpar = bs) +
          prior(normal(0, 1), class = b, dpar = bs) +
          prior(normal(0, 5), class = Intercept, dpar = ndt) +
          prior(normal(0, 1), class = b, dpar = ndt) +
-         prior(normal(0, 1), class = Intercept, dpar = bias) +
+         # prior(normal(0, 1), class = Intercept, dpar = bias) +
          prior(student_t(3, 0, 1), class = sd, group = ID) +
          prior(lkj(2), class = cor, group = ID)
 
@@ -107,7 +108,7 @@ initfun <- function() {
 final_ddm_fit_2 <- brm(formula,
                        family = wiener(link = "identity",
                                        link_bs = "log",
-                                       link_bias = "logit",
+                                       # link_bias = "logit",
                                        link_ndt = "log"),
                        control = list(max_treedepth = 15,
                                       adapt_delta = ADAPT_DELTA),
@@ -116,16 +117,15 @@ final_ddm_fit_2 <- brm(formula,
                        inits = initfun,
                        init_r = 0.05,
                        prior = prior,
-                       cores = parallel::detectCores(),
+                       cores = 4,
                        data = data)
 
 # save before add_loo
-saveRDS(final_ddm_fit_2, file = "models/fit_2_ddm_final.rds")
+saveRDS(final_ddm_fit_2, file = "models/fit_2_ddm_final_no_bias.rds")
 
 final_ddm_fit_2 <- add_loo(final_ddm_fit_2)
+# save after add_loo
+saveRDS(final_ddm_fit_2, file = "models/fit_2_ddm_final_no_bias.rds")
 
 # pred_final_ddm_2 <- predict_ddm(final_ddm_fit_2)
-
-# save after add_loo
-saveRDS(final_ddm_fit_2, file = "models/fit_2_ddm_final.rds")
 # saveRDS(pred_final_ddm_2, file = "models/pred_2_ddm_final.rds")
